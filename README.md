@@ -1,5 +1,7 @@
 # STM32H7/F1 CAN/LIN 车身网关与车窗 ECU 诊断及 A/B Bootloader 系统
 
+## 项目简介
+
 基于 STM32H743、STM32F103RCT6 和 STM32F103C8T6 构建三节点车身网络，通过真实 LIN 与 CAN 实现实体按键到车窗 ECU 的控制链路，并集成 UDS 诊断和 A/B OTA。H7 负责网关与诊断主机，RC 负责车窗控制和双槽 Bootloader，C8 负责按键采集与 LIN 事件上传。
 
 ## 系统拓扑
@@ -51,26 +53,26 @@ RC App 实现的 UDS SID：`0x10`、`0x11`、`0x14`、`0x19`、`0x22`、`0x27`�
 | Metadata A | `0x0803F000–0x0803F7FF` |
 | Metadata B | `0x0803F800–0x0803FFFF` |
 
-新镜像先进入 Pending；Boot 校验 CRC32、Vector 和 Descriptor，记录启动尝试；App Confirm 后成为有效槽。连续未 Confirm 达到三次尝试上限时，回退到已有 confirmed 槽。这里没有加密签名或 Secure Boot。
+新镜像先进入 Pending；Boot 校验 CRC32、Vector 和 Descriptor，记录启动尝试；App Confirm 后成为有效槽。连续未 Confirm 达到三次尝试上限时，回退到已有 confirmed 槽。
 
-SecurityAccess 为实验环境下的固定 Seed/Key 演示实现，公开版已移除具体常量，不代表量产安全机制。
+SecurityAccess 使用固定 Seed/Key 演示机制，公开仓库已移除具体常量。
 
 ## 车窗控制与可靠性
 
-正式车窗保护采用编码器判据；历史电流采样实验代码不参与最终控制决策。
+车窗堵转与防夹保护采用编码器判据。
 
 - OPEN 堵转：启动宽限 500 ms；每 50 ms 采样，`encoder delta < 50` 连续 20 次则 STOP，不永久锁存。
 - CLOSE 防夹：启动宽限 500 ms；`encoder delta < 80` 连续 3 次则反转 500 ms、STOP 并锁存；需 `RESET` 解除。
 
 系统还实现 CAN Bus-Off 检测与恢复、RC IWDG、LIN Sleep/Remote Wake、镜像/Flash 边界校验。H7 的轻量 NvM 用双 Sector、CRC 与最后 Commit 的记录方式持久化 Window Lock 用户偏好。
 
-软件参考 AUTOSAR Classic 的分层和模块职责思想，对通信、诊断、故障管理与非易失数据管理做轻量拆分；**本项目并非完整 AUTOSAR 平台实现**。
+软件结构参考 AUTOSAR Classic 的分层与模块职责设计，对通信、诊断、故障管理和非易失数据管理进行模块化拆分。
 
-## 展示目录与边界
+## 代码目录
 
-- `gateway_h7/`：H7 LIN Master、CAN Gateway、UDS/OTA、NvM。
-- `window_ecu_rc/`：车窗控制、防夹、堵转、ISO-TP、UDS、App/Boot 协作。
-- `bootloader/`：A/B Bootloader、镜像校验、Metadata、Confirm、Flash 下载、UDS。
-- `button_node_c8/`：实体按键、LIN Slave、Sleep/Wakeup。
+- `gateway_h7/`：LIN Master、CAN 网关、UDS/OTA、NvM。
+- `window_ecu_rc/`：车窗控制、防夹、堵转、ISO-TP、UDS。
+- `bootloader/`：A/B Bootloader、镜像校验、Metadata、Flash 下载。
+- `button_node_c8/`：按键采集、LIN Slave、Sleep/Wakeup。
 
-本仓库为招聘展示精选版，仅保留能够体现系统架构与关键技术实现的核心源码，并非完整工程源码。不包含 STM32 HAL、CMSIS、FreeRTOS 第三方源码、Keil 工程及构建产物，不保证独立编译，不作为可烧录工程发布。
+仓库主要保留项目核心业务源码，STM32 HAL、CMSIS、FreeRTOS 等通用依赖未纳入。
